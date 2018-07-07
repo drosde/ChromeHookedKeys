@@ -66,7 +66,7 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
-    <Compile Include="globalKeyboardHook.cs" />
+    <Compile Include="Utilities\globalKeyboardHook.cs" />
     <Compile Include="Models\UserConfig.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

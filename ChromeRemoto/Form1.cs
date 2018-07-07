@@ -19,6 +19,12 @@ namespace ChromeRemoto
     {
         private IWebDriver driver;
 
+        struct Combinacion
+        {
+            public string Name { get; set; }
+            public Action Callback { get; set; }
+        }
+
         // DLL libraries used to manage hotkeys
         globalKeyboardHook gkh = new globalKeyboardHook();        
 
@@ -30,11 +36,16 @@ namespace ChromeRemoto
 
         public static extern IntPtr FindWindow(string className, string windowName);
 
-        private string[] presionadas = {};
+        private string presionadas = "";
 
         public List<string> temp_keys = new List<string>();
 
         private bool called = false;
+
+        private bool reproduciendo = false;
+
+        //IDictionary<Combinacion> COMBINACIONES = new Dictionary<Combinacion>();
+        Dictionary<string, Action> COMBINACIONES = new Dictionary<string, Action>();
 
         //public 
 
@@ -45,6 +56,11 @@ namespace ChromeRemoto
 
         public void IniciarChrome()
         {
+            if (called)
+            {
+                return;
+            }
+
             ChromeOptions options = new ChromeOptions();
             options.AddExtension("ubloc.crx");
 
@@ -60,6 +76,9 @@ namespace ChromeRemoto
                 driver = task.Result;
             else
                 throw new Exception("Timed out");
+
+
+            called = true;
         }
 
         public IWebDriver setCookie(IWebDriver driver)
@@ -74,20 +93,61 @@ namespace ChromeRemoto
             return driver;
         }
 
-        public void reproducirSpotify(IWebDriver driver)
+        public void reproducirSpotify()
         {
+            if(driver == null)
+            {
+                return;
+            }
+
             // Obtener el pause / play button and click()
             try
             {
-                var a = driver.FindElement(By.ClassName("control-button control-button--circled"));
+                By byXpath = By.XPath("//button[contains(@title, 'Reproducir')]");
+
+                var a = driver.FindElement(byXpath);
+                Console.WriteLine("Elemento reproducir encontrado");
                 if (a != null)
                 {
                     a.Click();
+                }
+                else
+                {
+                    Console.WriteLine("Elemento reproducir es nulo");
                 }
             }
             catch (NoSuchElementException)
             {
                 MessageBox.Show("Elemento reproducir no existe");
+            }
+        }
+
+        public void pausarSpotify()
+        {
+            if (driver == null)
+            {
+                return;
+            }
+
+            // Obtener el pause / play button and click()
+            try
+            {
+                By byXpath = By.XPath("//button[contains(@title, 'Pausar')]");
+
+                var a = driver.FindElement(byXpath);
+                Console.WriteLine("Elemento pausar encontrado");
+                if (a != null)
+                {
+                    a.Click();
+                }
+                else
+                {
+                    Console.WriteLine("Elemento pausar es nulo");
+                }
+            }
+            catch (NoSuchElementException)
+            {
+                MessageBox.Show("Elemento pausar no existe");
             }
         }
 
@@ -106,37 +166,69 @@ namespace ChromeRemoto
             _gkh.KeyUp += new KeyEventHandler(gkh_KeyUp); //Event for the release of key.
 
             _gkh.hook();
+
+            COMBINACIONES.Add("SPO", IniciarChrome);
+            COMBINACIONES.Add("POS", reproducirSpotify);
+            COMBINACIONES.Add("PSO", pausarSpotify);
         }
 
         //What happens on key release.
         void gkh_KeyUp(object sender, KeyEventArgs e){
-            if (!temp_keys.Contains(e.KeyCode.ToString()))
+            
+            // Eliminar la letra anterior si es la misma a esta
+            /*if(presionadas.Length > 1)
             {
+                var i = presionadas.IndexOf(e.KeyCode.ToString());
+                if (i >= 0 && i == presionadas.Length - 1)
+                {
+                    presionadas.Remove(i);
+                }
+            }*/
+
+            // Una vez encontrado eliminar esa key de presionada
+            if (!temp_keys.Contains(e.KeyCode.ToString()))
+            {                
+                presionadas += e.KeyCode.ToString();
+
                 lstLog.Items.Add(e.KeyCode.ToString());
 
                 temp_keys.Add(e.KeyCode.ToString());
 
-                if (comprobarIniciar())
+                foreach (KeyValuePair<string, Action> entry in COMBINACIONES)
+                {
+                    Console.WriteLine("indice de "+ entry.Key + " en "+ presionadas + " es -> " + presionadas.IndexOf(entry.Key)); 
+                    if (presionadas.IndexOf(entry.Key) >= 0)
+                    {
+                        Console.WriteLine("Encontra2 " + entry.Key);
+                        entry.Value.Invoke();
+                    }
+                }
+
+                /*if (comprobarIniciar())
                 {
                     MessageBox.Show("LLAMAR AHORA");
 
-                    if (!called)
-                    {
-                        IniciarChrome();
-                        called = true;
-                    }
+                    
+                }
+                else if (comprobarReproducir())
+                {
+                    Console.WriteLine("Llamando reproducir");
+                    boton_control(driver, true);
+                }else if (comprobarPausar())
+                {
+                    Console.WriteLine("Llamando pausa");
+                    boton_control(driver, false);
+                }*/
+
+
+                if (presionadas.Length > 10) presionadas = "";
+
+                if (temp_keys.Count == 3)
+                {
+                    temp_keys.Clear();
+                    lstLog.Items.Clear();
                 }
             }
-
-            /*else if (comprobarReproducir()){
-                reproducirSpotify(driver);
-            }
-            else if (comprobarPausar()){
-
-            }
-            else if(lstLog.Items.Count == 4){
-                lstLog.Clear();
-            }*/
 
             e.Handled = false; //Setting this to true will cause the global hotkeys to block all outgoing keystrokes.
         }
@@ -151,6 +243,17 @@ namespace ChromeRemoto
 
         public bool comprobarIniciar()
         {
+            //bool ini = false;
+            foreach (KeyValuePair<string, Action> entry in COMBINACIONES)
+            {
+                if(presionadas.IndexOf(entry.Key) > 0)
+                {
+                    Console.WriteLine("Encontra2 "+ entry.Key);
+                    entry.Value.Invoke();
+                }
+            }
+
+            
             bool s = false;
             bool o = false;
             bool p = false;
@@ -162,12 +265,8 @@ namespace ChromeRemoto
                 o = temp_keys[2] == "O";
             }
 
-            if(temp_keys.Count > 10)
-            {
-                temp_keys.Clear();
-            }
-
             return s && o && p;
+
         }
 
         public bool comprobarPausar()
@@ -176,11 +275,11 @@ namespace ChromeRemoto
             bool o = false;
             bool p = false;
 
-            if (lstLog.Items.Count >= 3)
+            if (temp_keys.Count >= 3)
             {
-                s = lstLog.Items[0].Text == "P";
-                p = lstLog.Items[1].Text == "S";
-                o = lstLog.Items[2].Text == "O";
+                s = temp_keys[0] == "P";
+                p = temp_keys[1] == "S";
+                o = temp_keys[2] == "O";
             }
 
             return s && o && p;
@@ -192,11 +291,11 @@ namespace ChromeRemoto
             bool o = false;
             bool p = false;
 
-            if (lstLog.Items.Count >= 3)
+            if (temp_keys.Count >= 3)
             {
-                s = lstLog.Items[0].Text == "P";
-                p = lstLog.Items[1].Text == "O";
-                o = lstLog.Items[2].Text == "S";
+                s = temp_keys[0] == "P";
+                p = temp_keys[1] == "O";
+                o = temp_keys[2] == "S";
             }
 
             return s && o && p;
