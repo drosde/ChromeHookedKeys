@@ -19,12 +19,6 @@ namespace ChromeRemoto
     {
         private IWebDriver driver;
 
-        struct Combinacion
-        {
-            public string Name { get; set; }
-            public Action Callback { get; set; }
-        }
-
         // DLL libraries used to manage hotkeys
         globalKeyboardHook gkh = new globalKeyboardHook();        
 
@@ -36,18 +30,12 @@ namespace ChromeRemoto
 
         public static extern IntPtr FindWindow(string className, string windowName);
 
+        // Utilidades
         private string presionadas = "";
 
-        public List<string> temp_keys = new List<string>();
+        private bool called, cooldownKeys = false;
 
-        private bool called = false;
-
-        private bool reproduciendo = false;
-
-        //IDictionary<Combinacion> COMBINACIONES = new Dictionary<Combinacion>();
-        Dictionary<string, Action> COMBINACIONES = new Dictionary<string, Action>();
-
-        //public 
+        Dictionary<string, Action> COMBINACIONES = new Dictionary<string, Action>();        
 
         public Form1()
         {
@@ -93,73 +81,65 @@ namespace ChromeRemoto
             return driver;
         }
 
-        public void reproducirSpotify()
-        {
-            if(driver == null)
-            {
-                return;
-            }
-
-            // Obtener el pause / play button and click()
-            try
-            {
-                By byXpath = By.XPath("//button[contains(@title, 'Reproducir')]");
-
-                var a = driver.FindElement(byXpath);
-                Console.WriteLine("Elemento reproducir encontrado");
-                if (a != null)
-                {
-                    a.Click();
-                }
-                else
-                {
-                    Console.WriteLine("Elemento reproducir es nulo");
-                }
-            }
-            catch (NoSuchElementException)
-            {
-                MessageBox.Show("Elemento reproducir no existe");
-            }
-        }
-
-        public void pausarSpotify()
+        public void interactuarSpotify(string action, bool pausaRepr = false)
         {
             if (driver == null)
             {
                 return;
             }
 
-            // Obtener el pause / play button and click()
+            string titulo = action;
+
+            if(action == "PausarReproducir")
+            {
+                //bool encontrado = opt_title == null ? false : true;
+
+                titulo = pausaRepr ? "Pausar" : "Reproducir";
+                
+            }else if (action == "Siguiente"){
+                //
+            }
+
+
             try
             {
-                By byXpath = By.XPath("//button[contains(@title, 'Pausar')]");
+                By byXpath = By.XPath("//button[contains(@title, '" + titulo + "')]");
 
-                var a = driver.FindElement(byXpath);
-                Console.WriteLine("Elemento pausar encontrado");
+                IWebElement a = driver.FindElement(byXpath);
+                Console.WriteLine("Elemento {0} encontrad.", titulo);
+
                 if (a != null)
                 {
                     a.Click();
                 }
-                else
-                {
-                    Console.WriteLine("Elemento pausar es nulo");
-                }
             }
             catch (NoSuchElementException)
             {
-                MessageBox.Show("Elemento pausar no existe");
+                if (!pausaRepr && action == "PausarReproducir")
+                {
+                    Console.WriteLine("Llamando de nuevo a la fx pausarRepr -> {0}", pausaRepr);
+
+                    interactuarSpotify(action, true);
+                }
+
+                Console.WriteLine("Elemento {0} no existe", titulo);
             }
+
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
             var _gkh = gkh.getInstance();
 
-            _gkh.setKeys(System.Windows.Forms.Keys.S);//This collects the A Key.
+            _gkh.setKeys(System.Windows.Forms.Keys.MediaNextTrack); //This collects the MediaNextTrack Key.
 
-            _gkh.setKeys(System.Windows.Forms.Keys.P);//This collects the B Key.
+            _gkh.setKeys(System.Windows.Forms.Keys.MediaPreviousTrack); //This collects the ... Key.
 
-            _gkh.setKeys(System.Windows.Forms.Keys.O);//This collects the C Key.
+            _gkh.setKeys(System.Windows.Forms.Keys.MediaPlayPause); //This collects the ... Key.
+
+            _gkh.setKeys(System.Windows.Forms.Keys.F2); // Volume down
+
+            _gkh.setKeys(System.Windows.Forms.Keys.F3); // Volume up
 
             _gkh.KeyDown += new KeyEventHandler(gkh_KeyDown); //Event for pressing the key down.
 
@@ -167,138 +147,43 @@ namespace ChromeRemoto
 
             _gkh.hook();
 
-            COMBINACIONES.Add("SPO", IniciarChrome);
-            COMBINACIONES.Add("POS", reproducirSpotify);
-            COMBINACIONES.Add("PSO", pausarSpotify);
+            // ... Media controls keys
+            COMBINACIONES.Add("MediaPlayPause", () => { interactuarSpotify("PausarReproducir"); });
+            COMBINACIONES.Add("MediaNextTrack", () => { interactuarSpotify("Siguiente"); });
+            COMBINACIONES.Add("MediaPreviousTrack", () => { interactuarSpotify("Anterior"); });
+
+            // ... Volume controls keys
         }
 
         //What happens on key release.
         void gkh_KeyUp(object sender, KeyEventArgs e){
-            
-            // Eliminar la letra anterior si es la misma a esta
-            /*if(presionadas.Length > 1)
+            presionadas += e.KeyCode.ToString();
+
+            lstLog.Items.Add(e.KeyCode.ToString());
+
+            foreach (KeyValuePair<string, Action> entry in COMBINACIONES)
             {
-                var i = presionadas.IndexOf(e.KeyCode.ToString());
-                if (i >= 0 && i == presionadas.Length - 1)
+                Console.WriteLine("indice de {0} en {1} es -> {2}", entry.Key, presionadas, presionadas.IndexOf(entry.Key)); 
+                if (presionadas.IndexOf(entry.Key) >= 0)
                 {
-                    presionadas.Remove(i);
-                }
-            }*/
+                    entry.Value.Invoke();
 
-            // Una vez encontrado eliminar esa key de presionada
-            if (!temp_keys.Contains(e.KeyCode.ToString()))
-            {                
-                presionadas += e.KeyCode.ToString();
-
-                lstLog.Items.Add(e.KeyCode.ToString());
-
-                temp_keys.Add(e.KeyCode.ToString());
-
-                foreach (KeyValuePair<string, Action> entry in COMBINACIONES)
-                {
-                    Console.WriteLine("indice de "+ entry.Key + " en "+ presionadas + " es -> " + presionadas.IndexOf(entry.Key)); 
-                    if (presionadas.IndexOf(entry.Key) >= 0)
-                    {
-                        Console.WriteLine("Encontra2 " + entry.Key);
-                        entry.Value.Invoke();
-                    }
-                }
-
-                /*if (comprobarIniciar())
-                {
-                    MessageBox.Show("LLAMAR AHORA");
-
-                    
-                }
-                else if (comprobarReproducir())
-                {
-                    Console.WriteLine("Llamando reproducir");
-                    boton_control(driver, true);
-                }else if (comprobarPausar())
-                {
-                    Console.WriteLine("Llamando pausa");
-                    boton_control(driver, false);
-                }*/
-
-
-                if (presionadas.Length > 10) presionadas = "";
-
-                if (temp_keys.Count == 3)
-                {
-                    temp_keys.Clear();
-                    lstLog.Items.Clear();
+                    presionadas = presionadas.Remove(presionadas.IndexOf(entry.Key), entry.Key.Length);
                 }
             }
-
+    
             e.Handled = false; //Setting this to true will cause the global hotkeys to block all outgoing keystrokes.
         }
 
         //What happens on key press.
         void gkh_KeyDown(object sender, KeyEventArgs e){
-            //lstLog.Items.Add("Down\t" + e.KeyCode.ToString());
-            //MessageBox.Show(e.KeyCode.ToString());            
 
             e.Handled = false;
         }
-
-        public bool comprobarIniciar()
+        
+        private void btn_iniciar_Click(object sender, EventArgs e)
         {
-            //bool ini = false;
-            foreach (KeyValuePair<string, Action> entry in COMBINACIONES)
-            {
-                if(presionadas.IndexOf(entry.Key) > 0)
-                {
-                    Console.WriteLine("Encontra2 "+ entry.Key);
-                    entry.Value.Invoke();
-                }
-            }
-
-            
-            bool s = false;
-            bool o = false;
-            bool p = false;
-
-            if (temp_keys.Count >= 3)
-            {
-                s = temp_keys[0] == "S";
-                p = temp_keys[1] == "P";
-                o = temp_keys[2] == "O";
-            }
-
-            return s && o && p;
-
-        }
-
-        public bool comprobarPausar()
-        {
-            bool s = false;
-            bool o = false;
-            bool p = false;
-
-            if (temp_keys.Count >= 3)
-            {
-                s = temp_keys[0] == "P";
-                p = temp_keys[1] == "S";
-                o = temp_keys[2] == "O";
-            }
-
-            return s && o && p;
-        }
-
-        public bool comprobarReproducir()
-        {
-            bool s = false;
-            bool o = false;
-            bool p = false;
-
-            if (temp_keys.Count >= 3)
-            {
-                s = temp_keys[0] == "P";
-                p = temp_keys[1] == "O";
-                o = temp_keys[2] == "S";
-            }
-
-            return s && o && p;
+            IniciarChrome();
         }
     }
 }

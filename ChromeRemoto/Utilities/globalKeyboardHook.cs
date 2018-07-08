@@ -138,7 +138,8 @@ namespace Utilities
         /// <returns></returns>
         public static int hookProc(int code, int wParam, ref keyboardHookStruct lParam)
         {
-            Console.WriteLine(code);
+            //Console.WriteLine(code);
+
             if (code >= 0)
             {
                 Keys key = (Keys)lParam.vkCode;
@@ -153,14 +154,24 @@ namespace Utilities
                         }
                         else if ((wParam == WM_KEYUP || wParam == WM_SYSKEYUP) && (Instance.KeyUp != null))
                         {
+                            Console.WriteLine("lparam time: {0}", lParam.time);
+                            Console.WriteLine("lparam flag: {0}", lParam.flags);
+                            Console.WriteLine("lparam dwExtraInfo: {0}", lParam.dwExtraInfo);
                             Instance.KeyUp(Instance, kea);
                         }
+
                         if (kea.Handled)
                             return 1;
                     }
                 }
             }
-            return CallNextHookEx(Instance.hhook, code, wParam, ref lParam);
+
+
+            return 0;
+
+            // Descomentar si se quieren enviar todos los enventos producidos.
+            // Se van a evaluar los siguientes Hooks que esten pendientes.
+            //return CallNextHookEx(Instance.hhook, code, wParam, ref lParam);
         }
         #endregion
 
