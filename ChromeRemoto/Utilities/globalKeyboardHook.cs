@@ -154,9 +154,6 @@ namespace Utilities
                         }
                         else if ((wParam == WM_KEYUP || wParam == WM_SYSKEYUP) && (Instance.KeyUp != null))
                         {
-                            Console.WriteLine("lparam time: {0}", lParam.time);
-                            Console.WriteLine("lparam flag: {0}", lParam.flags);
-                            Console.WriteLine("lparam dwExtraInfo: {0}", lParam.dwExtraInfo);
                             Instance.KeyUp(Instance, kea);
                         }
 
