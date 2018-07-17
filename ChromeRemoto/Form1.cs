@@ -224,8 +224,8 @@ namespace ChromeRemoto
             utilidades = new Utilities.Utilidades();
 
             play_button = AgregarBotonTaskBar("play-track.ico", btn_play_pause_taskbar_click, "Reproducir");
-            var next = AgregarBotonTaskBar("next-track.ico", btn_nextTrack_taskbar_click, "Siguiente");
-            var prev = AgregarBotonTaskBar("prev-track.ico", btn_prevTrack_taskbar_click, "Anterior");
+            var next = AgregarBotonTaskBar("next-track.ico", (o, s) => { interactuarSpotify("Siguiente"); }, "Siguiente");
+            var prev = AgregarBotonTaskBar("prev-track.ico", (o, s) => { interactuarSpotify("Anterior"); }, "Anterior");
 
             TaskbarManager.Instance.ThumbnailToolBars.AddButtons(this.Handle, prev, play_button, next);
         }
@@ -239,16 +239,6 @@ namespace ChromeRemoto
             play_button.Tooltip = play_button_enabled ? "Reproducir" : "Pausar";
 
             interactuarSpotify("PausarReproducir");
-        }
-
-        void btn_nextTrack_taskbar_click(object sender, ThumbnailButtonClickedEventArgs e)
-        {
-            interactuarSpotify("Siguiente");
-        }
-
-        void btn_prevTrack_taskbar_click(object sender, ThumbnailButtonClickedEventArgs e)
-        {
-            interactuarSpotify("Anterior");
         }
 
         private void btn_iniciar_Click(object sender, EventArgs e)
@@ -296,7 +286,6 @@ namespace ChromeRemoto
             if (txt_script.Text != String.Empty && txt_script.Text != "Ejecutar este script despues de iniciada la pagina")
             {
                 IJavaScriptExecutor scriptExecutor = (IJavaScriptExecutor)driver;
-                //
                 var a = scriptExecutor.ExecuteScript(txt_script.Text);
                 Console.WriteLine(a);
             }
